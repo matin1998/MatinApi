@@ -1,5 +1,6 @@
 package com.example.controller
 import com.example.annotation.ApiMapping
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.ResponseEntity
 import org.springframework.http.HttpStatus
 import org.springframework.web.bind.annotation.GetMapping
@@ -7,47 +8,47 @@ import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.*
-
+import com.example.service.UserService
+import com.example.dto.UserCreateDto
+import com.example.dto.UserDto
+import com.example.mogodb.TenantContext
 @ApiMapping
-class RestApiController {
-    @GetMapping("rest")
-    fun get(): ResponseEntity<String> {
-        return ResponseEntity("hello world", HttpStatus.OK)
+class RestApiController @Autowired constructor(
+    private val userService: UserService
+){
+    @GetMapping("user/{tenant}")
+    fun get(@RequestParam tenant: String): ResponseEntity<List<UserDto>> {
+    TenantContext.setCurrentTenant(tenant)
+    return ResponseEntity(userService.getAll(), HttpStatus.OK)
+}
+
+    @PostMapping("user/adding")
+    fun save(@RequestParam tenant: String, @RequestBody create: UserCreateDto): ResponseEntity<UserDto> {
+        TenantContext.setCurrentTenant(tenant)
+        return ResponseEntity(userService.save(create), HttpStatus.CREATED)
     }
 
-    @PostMapping("rest/{gam}")
-    fun post(
-        @PathVariable gam:Int,
-        @RequestParam shoru:Int
-    )
-    : ResponseEntity<String> {
-        val b = IntArray(20)
-        val stringArray: Array<String?> = arrayOfNulls(b.size)
-        for (i in b.indices) {
-            b[i] = 1
+    @GetMapping("user/getting/{id}")
+    fun save(@RequestParam tenant: String, @PathVariable id: String): ResponseEntity<UserDto> {
+        val user = userService.get(id)
+        TenantContext.setCurrentTenant(tenant)
+        return if (user == null) {
+            ResponseEntity(HttpStatus.NOT_FOUND)
+        } else {
+            ResponseEntity(user, HttpStatus.OK)
         }
-        for (i in 0..1) {
-            var k = 0
+    }
 
-            val a = gam
-            if (i == 0) {
-                var j = shoru
-                while (j < 20) {
-                    b[j] = 0
-                    j += a
-                }
-            }
-            if (i == 1) {
-                for (j in 0..19) {
-                    if (b[j] == 1) {k += 1}
-                    if (k == 0 || k % a == 0) {
-                        b[j] = 0
-                    }
-                }
-            }
-            for (j in 0..19) stringArray[j] = b[j].toString()
-
+    @GetMapping("user/deleting/{id}")
+    fun delete(@RequestParam tenant: String, @PathVariable id: String){
+        TenantContext.setCurrentTenant(tenant)
+        val user=userService.get(id)
+        if(user==null){
+            ResponseEntity("Data Not found",HttpStatus.NOT_FOUND)
         }
-        return ResponseEntity(stringArray.contentToString(),HttpStatus.CREATED)
+        else {
+            userService.delete(id)
+            ResponseEntity("completely deleted!", HttpStatus.OK)
+        }
     }
 }
